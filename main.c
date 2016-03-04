@@ -7,7 +7,8 @@
 #include <time.h>
 #include <unistd.h>
 #include <libgen.h>
-
+#include <pwd.h>
+#include <ctype.h>
 /*
  * why not "const char *path"?
  * because we are always passing the path by value
@@ -52,7 +53,9 @@ char *do_get_perms(struct stat attr);
 char do_get_type(struct stat attr);
 char *do_get_mtime(struct stat attr);
 char *do_get_symlink(char *path, struct stat attr);
-char *do_get_username(char *uid, struct stat attr);
+int check_if_char_array_or_int(char *numArray);
+
+uid_t name_to_uid(char const *name);
 
 /**
  * a global variable containing the program name
@@ -440,12 +443,21 @@ int do_type(char type, struct stat attr) {
  */
 int do_nouser(struct stat attr) {
 
-  /* amanf */
+  if (getpwuid(attr.st_uid)) {
+    return EXIT_SUCCESS;
+  }
 
-  return EXIT_SUCCESS;
+  return EXIT_FAILURE;
+
 }
+  /*
+   * we are not calling free() on filename. From the basename manual:
+   * both dirname() and basename() return pointers to null-terminated strings,
+   * do not pass these pointers to free()
 
 /*
+  /*
+
  * @brief returns EXIT_SUCCESS if the user(-name/-id) matches the entry attribute
  *
  * @param user the username or uid to match against
@@ -454,13 +466,38 @@ int do_nouser(struct stat attr) {
  * @retval EXIT_SUCCESS
  * @retval EXIT_FAILURE
  */
+
 int do_user(char *user, struct stat attr) {
 
-  /* amanf */
-  /* see also do_get_username */
+    /* first I check if user is an integer or a string, by using check_if_char_array_or_int, if it's a int it will return 1, if it's a char it'll return 0
+       case 1: I take the uid, convert it to an int and compare it to the file's uid, using attr.st_uid
+       case 0: I get the uid with name_to_uid and then compare it to the file's uid, using attr.st_uid
+    */
 
-  return EXIT_SUCCESS;
-}
+if(check_if_char_array_or_int(user))
+    {
+      long int temp = atol(user);
+
+      {
+        if((attr.st_uid) == temp)
+        return EXIT_SUCCESS;
+      }
+
+      return EXIT_FAILURE;
+    }
+
+if(!check_if_char_array_or_int(user))
+    {
+     int temp_uid = name_to_uid(user);
+
+      {
+        if((attr.st_uid) == temp_uid)
+          return EXIT_SUCCESS;
+      }
+
+      return EXIT_FAILURE;
+    }
+  }
 
 /*
  * @brief returns EXIT_SUCCESS if the path matches the pattern
@@ -636,10 +673,31 @@ char *do_get_symlink(char *path, struct stat attr) {
  *
  * @returns the username converted from uid as a string
  */
-char *do_get_username(char *uid, struct stat attr) {
-  char *username = "";
 
-  /* amanf */
+int check_if_char_array_or_int(char *numArray)
+  {
+    int i;
+    const int len = strlen(numArray);
 
-  return username;
+    for (i = 0; i < len; i++)
+    {
+      if (!isdigit(numArray[i])) return 0;
+    }
+    return 1;
+  }
+
+uid_t name_to_uid(char const *name)
+{
+  if (!name)
+    return -1;
+  long const buflen = sysconf(_SC_GETPW_R_SIZE_MAX);
+  if (buflen == -1)
+    return -1;
+  // requires c99
+  char buf[buflen];
+  struct passwd pwbuf, *pwbufp;
+  if (0 != getpwnam_r(name, &pwbuf, buf, buflen, &pwbufp)
+      || !pwbufp)
+    return -1;
+  return pwbufp->pw_uid;
 }
