@@ -474,25 +474,26 @@ int do_user(char *user, struct stat attr) {
        case 0: I get the uid with name_to_uid and then compare it to the file's uid, using attr.st_uid
     */
 
-if(check_if_char_array_or_int(user))
-    {
-      long int temp = atol(user);
+    long int temp_uid;
+    char * end = 0;
 
-      {
-        if((attr.st_uid) == temp)
-        return EXIT_SUCCESS;
-      }
+    if(check_if_char_array_or_int(user))
+    {
+      temp_uid = strtol(user, &end, 10);
+
+      if (end) return EXIT_FAILURE;
+
+      if((attr.st_uid) == temp_uid) return EXIT_SUCCESS;
 
       return EXIT_FAILURE;
     }
 
-if(!check_if_char_array_or_int(user))
+    else
     {
-     int temp_uid = name_to_uid(user);
+      temp_uid = name_to_uid(user);
 
-      {
-        if((attr.st_uid) == temp_uid)
-          return EXIT_SUCCESS;
+      if((attr.st_uid) == temp_uid) {
+        return EXIT_SUCCESS;
       }
 
       return EXIT_FAILURE;
